@@ -1,0 +1,5 @@
+apache-airflow
+clickhouse-driver
+pandas
+requests
+kafka-python

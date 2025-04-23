@@ -1,1 +1,62 @@
 # ETL-process-for-monitoring-tickets-price
+
+# Система мониторинга и уведомлений о ценах на авиабилеты
+
+## Запуск
+
+# Access to folders
+
+1. mkdir -p airflow/{dags,logs,plugins} .docker/{zookeeper,kafka} postgres-data
+2. sudo chown -R 50000:0 airflow/ postgres-data/ .docker/
+3. sudo chmod -R 755 airflow/ postgres-data/ .docker/
+4. sudo chown -R 1001:1001 .docker/kafka
+5. sudo chmod -R 775 .docker/kafka
+
+7. sudo chown -R 1001:1001 .docker/zookeeper
+8. sudo chmod -R 775 .docker/zookeeper
+
+9. sudo docker-compose up -d
+
+# Delete default user 
+1. docker exec -it ваш_контейнер_clickhouse bash
+2. rm -f /etc/clickhouse-server/users.d/default-user.xml
+
+# Create Kafka topic
+1. docker-compose exec kafka kafka-topics.sh --create ^ \
+  --bootstrap-server localhost:9092 ^ \
+  --topic aviasales ^ \
+  --partitions 3
+
+
+1. docker-compose down
+2. docker-compose restart airflow-webserver
+
+## create DAGs
+
+1. sudo touch fetch_data.py
+2. 
+
+## Описание проекта
+
+Этот проект представляет собой комплексную систему для сбора данных о ценах на авиабилеты из различных источников, их обработки и анализа, а также отправки уведомлений о выгодных предложениях через Telegram. Проект реализован с использованием современных инструментов и технологий, таких как Apache Airflow, Apache Kafka, Apache Spark, ClickHouse и PostgreSQL.
+
+## Используемые инструменты
+
+1. **Apache Airflow**: Оркестратор рабочих процессов (workflows), который управляет выполнением задач по сбору, обработке и анализу данных.
+2. **Apache Kafka**: Платформа для потоковой передачи данных, используемая для передачи сообщений между различными компонентами системы.
+3. **Apache Spark**: Распределенная система для обработки больших данных, используемая для анализа данных о ценах на авиабилеты.
+4. **ClickHouse**: Колоночная база данных, оптимизированная для быстрого выполнения аналитических запросов.
+5. **PostgreSQL**: Реляционная база данных, используемая для хранения метаданных и состояния выполнения задач в Airflow.
+6. **Telegram**: Мессенджер, используемый для отправки уведомлений пользователям о выгодных предложениях на авиабилеты.
+
+## Основные компоненты
+
+- **PostgreSQL**: Используется для хранения данных Airflow.
+- **Zookeeper и Kafka**: Используются для обеспечения надежной потоковой передачи данных.
+- **ClickHouse**: Хранит и обрабатывает данные о ценах на авиабилеты.
+- **Spark**: Выполняет анализ данных для выявления выгодных предложений.
+- **Airflow**: Управляет выполнением всех задач, от сбора данных до отправки уведомлений.
+
+## Заключение
+
+Этот проект демонстрирует глубокое понимание современных технологий data engineering и их интеграции.

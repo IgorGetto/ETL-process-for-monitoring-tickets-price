@@ -1,0 +1,134 @@
+
+
+services:
+  # PostgreSQL для Airflow (вместо SQLite)
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Zookeeper для Kafka
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    ports:
+      - "2181:2181"
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    volumes:
+      - ./.docker/zookeeper:/bitnami/zookeeper
+
+  # Kafka
+  kafka:
+    image: bitnami/kafka:3.6
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_ENABLE_KRAFT=no
+    depends_on:
+      - zookeeper
+    volumes:
+      - ./.docker/kafka:/bitnami/kafka
+
+  # ClickHouse
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.3.1.2703-alpine
+    ports:
+      - "8123:8123"  # HTTP интерфейс
+      - "9000:9000"  # Нативный протокол
+    environment:
+      - CLICKHOUSE_DB=tickets
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
+    volumes:
+      - ./.docker/clickhouse:/var/lib/clickhouse
+
+  # Spark
+  spark-master:
+    image: bitnami/spark:3.5
+    ports:
+      - "8080:8080"  # Web UI
+      - "7077:7077"  # Master порт
+    environment:
+      - SPARK_MODE=master
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      - spark-master
+
+  # Airflow с PostgreSQL
+  airflow-webserver:
+    image: apache/airflow:2.6.3
+    entrypoint: ["/opt/airflow/entrypoint.sh"]
+    restart: always
+    depends_on:
+      - postgres
+      - clickhouse
+      - kafka
+    ports:
+      - "8081:8080"
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__SECRET_KEY=secret_key
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow:/opt/airflow
+      - ./entrypoint.sh:/opt/airflow/entrypoint.sh
+      - ./requirements.txt:/opt/airflow/requirements.txt
+      - ./config.json:/opt/airflow/dags/config.json
+    command: >
+      bash -c "
+      airflow db init &&
+      pip install -r /opt/airflow/requirements.txt &&
+      airflow users create --username admin --password admin --firstname Admin --lastname Admin --role Admin --email admin@example.com &&
+      airflow webserver
+      "
+
+  airflow-scheduler:
+    image: apache/airflow:2.6.3
+    entrypoint: ["/opt/airflow/entrypoint.sh"]
+    restart: always
+    depends_on:
+      - airflow-webserver
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - ./airflow:/opt/airflow
+      - ./entrypoint.sh:/opt/airflow/entrypoint.sh
+    command: >
+      bash -c "
+      pip install -r /opt/airflow/requirements.txt &&
+      airflow scheduler
+      "
+
+volumes:
+  postgres-data:
+  clickhouse-data:
