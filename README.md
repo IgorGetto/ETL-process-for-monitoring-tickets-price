@@ -1,10 +1,8 @@
-# ETL-process-for-monitoring-tickets-price
-
 # Система мониторинга и уведомлений о ценах на авиабилеты
 
 ## Запуск
 
-# Access to folders
+# Создать и выдать права доступа для необходимых директорий
 
 1. mkdir -p airflow/{dags,logs,plugins} .docker/{zookeeper,kafka} postgres-data
 2. sudo chown -R 50000:0 airflow/ postgres-data/ .docker/
@@ -17,21 +15,21 @@
 
 9. sudo docker-compose up -d
 
-# Delete default user 
+# Удалить дефолтного пользователя, чтобы входить без пароля
 1. docker exec -it ваш_контейнер_clickhouse bash
 2. rm -f /etc/clickhouse-server/users.d/default-user.xml
 
-# Create Kafka topic
+# Создать топик в кафке
 1. docker-compose exec kafka kafka-topics.sh --create ^ \
   --bootstrap-server localhost:9092 ^ \
   --topic aviasales ^ \
   --partitions 3
 
-
+# Завершение или перезагрузка 
 1. docker-compose down
 2. docker-compose restart airflow-webserver
 
-## create DAGs
+## Создание Дагов
 
 1. sudo touch fetch_data.py
 2. 
